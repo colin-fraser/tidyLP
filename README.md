@@ -30,6 +30,36 @@ chair is made of 2 units of metal and 1 unit of wood, and makes a profit
 of $100. We have 6,000 units of metal and 9,000 units of wood in
 inventory. How many tables and chairs should we make?
 
+### tl;dr, the solution looks like this:
+
+``` r
+library(tidyLP)
+df <- tibble::tribble(
+  ~ product_type,~ metal_units, ~ wood_units, ~ profit,
+  'table',                   1,            3,      200,
+  'chair',                   2,            1,      100
+)
+df |> 
+  tidy_lp(
+    # objective function
+    profit,
+    
+    # constraints
+    metal_units ~ leq(6000),
+    wood_units ~ leq(9000)
+  ) |> 
+  lp_solve() |> 
+  bind_solution(name = 'quantity') |> 
+  select(product_type, quantity)
+#> # A tibble: 2 × 2
+#>   product_type quantity
+#>   <chr>           <dbl>
+#> 1 table            2400
+#> 2 chair            1800
+```
+
+### Details
+
 To start solving the problem with `{tidyLP}`, we need a data frame that
 expresses the information we need for the objective function and the
 constraints. This data frame should have the same number of rows as
@@ -310,6 +340,8 @@ team |>
 #>           <dbl>
 #> 1         59600
 ```
+
+### Categorical Constraints
 
 However, there’s yet another set of constraints: we can only have at
 most 2 players from any single NBA team.
