@@ -157,13 +157,7 @@ lp_problem <- lp_problem |>
   add_constraints(
     (product_type == 'chair') - 2 * (product_type == 'table') ~ geq(0)
   )
-```
 
-Then, this can be specified by including function calls in the left hand
-side of the constraint. Additional constraints can be added to an
-lp_problem with `add_constraints`.
-
-``` r
 new_solution <- lp_problem |> 
   lp_solve() |> 
   bind_solution()
