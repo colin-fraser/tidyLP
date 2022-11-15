@@ -2,16 +2,20 @@
 % Please edit documentation in R/tidy_lp.R
 \name{lp_solve}
 \alias{lp_solve}
-\title{Solve tidy_lp problem}
+\title{Solve a TidyLP}
 \usage{
-lp_solve(lp_problem, ...)
+lp_solve(tlp, ..., solver = "lpSolve")
 }
 \arguments{
-\item{lp_problem}{}
+\item{tlp}{a TidyLP object}
+
+\item{...}{additional arguments passed to the solver}
+
+\item{solver}{the solver to use. Currently does nothing as only lpSolve is implemented}
 }
 \value{
-
+the solution
 }
 \description{
-Solve tidy_lp problem
+Solve a TidyLP
 }

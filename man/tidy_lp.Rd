@@ -2,24 +2,33 @@
 % Please edit documentation in R/tidy_lp.R
 \name{tidy_lp}
 \alias{tidy_lp}
-\title{Title}
+\title{Create a TidyLP object}
 \usage{
 tidy_lp(
   .data,
-  objective_coefs,
-  const_lhs,
-  const_rhs,
-  direction = c("max", "min"),
-  const_dir = NULL,
-  obj_labels = NULL
+  .objective,
+  ...,
+  .direction = "max",
+  .all_int = FALSE,
+  .all_bin = FALSE
 )
 }
 \arguments{
-\item{direction}{}
+\item{.data}{a data.frame that will be used to construct the object}
+
+\item{.objective}{an expression for the objective function}
+
+\item{...}{constraints}
+
+\item{.direction}{the direction of obtimization}
+
+\item{.all_int}{should the solution be integer-valued?}
+
+\item{.all_bin}{should the solution be binary-valued?}
 }
 \value{
-
+a TidyLPProblem object
 }
 \description{
-Title
+Create a TidyLP object
 }

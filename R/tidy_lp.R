@@ -1,96 +1,251 @@
-#' Title
-#'
-#' @param .data
-#' @param objective_coefs
-#' @param const_lhs
-#' @param const_rhs
-#' @param direction
-#'
-#' @return
-#' @export
-#'
-#' @examples
-#' @importFrom dplyr select pull
-tidy_lp <- function(.data,
-                    objective_coefs,
-                    const_lhs,
-                    const_rhs,
-                    direction = c('max', 'min'),
-                    const_dir = NULL,
-                    obj_labels = NULL) {
-  direction <- match.arg(direction)
-  objective_coefs <- dplyr::pull(.data, {{ objective_coefs }}, name = {{ obj_labels }})
-  n <- length(objective_coefs)
-
-  const_lhs <- as.matrix(dplyr::select(.data, {{ const_lhs }}))
-  m <- ncol(const_lhs)
-
-  const_dir <- compute_const_dir(const_dir, direction, m)
-
-  LPProblem(.data, objective_coefs, const_lhs, const_dir, const_rhs, direction)
-}
-
-#' Infer the constraints direction
-#'
-#' If the const_dir is length 1, repeats it m times.
-#' If it's NULL, infers from the problem direction.
-#' If it's m, returns it as is.
-#'
-#' @noRd
-compute_const_dir <- function(const_dir, direction, m) {
-  if (length(const_dir) == m) {
-    return(const_dir)
-  }
-  if (is.null(const_dir)) {
-    return(switch(direction, "max" = rep("<=", m), "min" = rep(">=", m)))
-  }
-  if (length(const_dir) == 1) {
-    return(rep(const_dir, m))
-  }
-  stop("const_dir must be length 0, 1, or m.")
-}
-
-LPProblem <- function(.data, objective_coefs, const_lhs, const_dir,
-                      const_rhs, direction) {
+TidyLP <- function(data, objective, constraints, direction,
+                   all_int = FALSE, all_bin = FALSE) {
   structure(
     list(
-      .data = .data,
-      objective_coefs = objective_coefs,
-      const_lhs = const_lhs,
-      const_dir = const_dir,
-      const_rhs = const_rhs,
-      direction = direction
+      data = data, objective = rlang::enquo(objective),
+      constraints = constraints,
+      direction = direction,
+      all_int = all_int,
+      all_bin = all_bin
     ),
-    class = 'LPProblem'
+    class = "TidyLP"
   )
 }
 
-#' Solve tidy_lp problem
+#' Create a TidyLP object
 #'
-#' @param lp_problem
+#' @param .data a data.frame that will be used to construct the object
+#' @param .objective an expression for the objective function
+#' @param ... constraints
+#' @param .direction the direction of obtimization
+#' @param .all_int should the solution be integer-valued?
+#' @param .all_bin should the solution be binary-valued?
 #'
-#' @return
+#' @return a TidyLPProblem object
 #' @export
 #'
-#' @examples
-lp_solve <- function(lp_problem, ...) {
-  lpSolve::lp(direction = lp_problem$direction,
-     objective.in = lp_problem$objective_coefs,
-     const.mat = lp_problem$const_lhs,
-     const.dir = lp_problem$const_dir,
-     const.rhs = lp_problem$const_rhs,
-     transpose.constraints = FALSE,
-     ...)
+tidy_lp <- function(.data, .objective, ..., .direction = "max",
+                    .all_int = FALSE, .all_bin = FALSE) {
+  TidyLP(.data, {{ .objective }},
+    constraints_from_formulas(list(...), direction = .direction),
+    direction = .direction, all_int = .all_int, all_bin = .all_bin
+  )
 }
 
-parse_constraint <- function(expr) {
-  TRUE
+#' Solve a TidyLP
+#'
+#' @param tlp a TidyLP object
+#' @param ... additional arguments passed to the solver
+#' @param solver the solver to use. Currently does nothing as only lpSolve is implemented
+#'
+#' @return the solution
+#' @export
+#'
+lp_solve <- function(tlp, ..., solver = "lpSolve") {
+  constraints <- materialize_constraints(tlp)
+  solution <- lpSolve::lp(
+    direction = tlp$direction,
+    objective.in = build_objective_coefficients(tlp),
+    const.mat = constraints$lhs,
+    const.dir = constraints$dir,
+    const.rhs = constraints$rhs,
+    transpose.constraints = FALSE,
+    all.int = tlp$all_int,
+    all.bin = tlp$all_bin
+  )
+  TidyLPSolution(solution, tlp)
 }
 
-parse_constraint_string <- function(constraint_string) {
-  check_valid_constraint_string(constraint_string)
+#' Add constraints to a tidy_lp
+#'
+#' @param tlp a tidy_lp object
+#' @param ... unnamed constraints specified as formulas
+#'
+#' @export
+add_constraints <- function(tlp, ...) {
+  new_constraints <- constraints_from_formulas(list(...), tlp$direction)
+  tlp$constraints <- c(tlp$constraints, new_constraints)
+  tlp
 }
 
-check_valid_constraint_string <- function(constraint_string) {
-  TRUE
+
+build_objective_coefficients <- function(tlp) {
+  dplyr::transmute(tlp$data, !!tlp$objective)
 }
+
+materialize_constraint <- function(constraint, tlp) {
+  lhs <- as.matrix(dplyr::transmute(tlp$data, !!constraint$lhs))
+  n <- ncol(lhs)
+  dir <- rep(constraint$rhs$direction, n)
+  rhs <- rep(constraint$rhs$value, n)
+  list(lhs = lhs, dir = dir, rhs = rhs)
+}
+
+materialize_constraints <- function(tlp) {
+  materialized_constraints <- purrr::map(tlp$constraints, materialize_constraint, tlp = tlp)
+  list(
+    lhs = do.call(cbind, (purrr::map(materialized_constraints, "lhs"))),
+    dir = do.call(c, purrr::map(materialized_constraints, "dir")),
+    rhs = do.call(c, purrr::map(materialized_constraints, "rhs"))
+  )
+}
+
+build_constraint_matrix <- function(tlp) {
+  constraints <- purrr::map(tlp$constraints, "lhs")
+  as.matrix(do.call(dplyr::transmute, rlang::list2(tlp$data, !!!constraints)))
+}
+
+build_constraint_direction_vector <- function(tlp) {
+  purrr::map_chr(tlp$constraints, c("rhs", "direction"))
+}
+
+build_constraint_rhs <- function(tlp) {
+  purrr::map_dbl(tlp$constraints, c("rhs", "value"))
+}
+
+# Constraints ---------------------------------------------------------------------------------
+
+constraint <- function(lhs, rhs) {
+  list(lhs = lhs, rhs = rhs)
+}
+
+constraint_rhs <- function(value, direction) {
+  list(value = value, direction = direction)
+}
+
+#' Constraint direction helpers
+#'
+#' @param value the right hand side of the constraint
+#'
+#' @description
+#'   These functions are used to specify the direction of the constraint
+#'   formulas. These should only be used within a constraint formula.
+#'
+#'   `geq` specifies a >= constraint
+#'   `leq` specifies a <= constraint
+#'   `eq` denotes a == constraint
+#'
+#' @return a `constraint_rhs` object
+#' @export
+#'
+#'
+leq <- function(value) {
+  constraint_rhs(value, "<=")
+}
+
+#' @rdname leq
+geq <- function(value) {
+  constraint_rhs(value, ">=")
+}
+
+#' @rdname leq
+eq <- function(value) {
+  constraint_rhs(value, "==")
+}
+
+#' export
+all_variables <- function() {
+  1
+}
+
+constraints_from_formulas <- function(const_list, direction) {
+  purrr::map(const_list, constraint_from_formula, direction = direction)
+}
+
+constraint_from_formula <- function(fml, direction) {
+  lhs <- read_constraint_lhs(fml)
+  rhs <- read_constraint_rhs(fml, direction)
+  constraint(lhs, rhs)
+}
+
+read_constraint_lhs <- function(fml) {
+  fml[[2]]
+}
+
+read_constraint_rhs <- function(fml, direction) {
+  x <- fml[[3]]
+  if (is.call(x)) {
+    out <- eval(x)
+  } else if (is.numeric(x)) {
+    out <- constraint_rhs(x, infer_constraint_direction(direction))
+  } else {
+    stop("RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
+  }
+  out
+}
+
+infer_constraint_direction <- function(direction) {
+  switch(direction, "max" = "<=", "min" = ">=")
+}
+
+
+# group_constraint ----------------------------------------------------------------------------
+
+
+#' Categorical Constraints
+#'
+#' @param col the column to generate a categorical constraint set from
+#'
+#' @return a tibble
+#' @export
+#' @importFrom tidyr spread
+#' @importFrom dplyr select mutate
+categorical_constraint <- function(col) {
+  tibble::tibble(
+    .x1 = col,
+    .x2 = 1
+  ) |>
+    mutate(.n = dplyr::row_number()) |>
+    tidyr::spread(.data$.x1, .data$.x2, fill = 0) |>
+    select(- .data$.n)
+}
+
+
+
+
+# TidyLPSolution ------------------------------------------------------------------------------
+TidyLPSolution <- function(sol, tlp) {
+  structure(list(sol = sol, tlp = tlp), class = 'TidyLPSolution')
+}
+
+
+#' Bind the solution to the original data
+#'
+#' Returns the original supplied data frame with a new column containing the solution.
+#'
+#' @param tidy_lp_solution a solved TidyLPSolution
+#' @param filter_nonzero if true, remove rows corresponding to 0's in the solution
+#' @param name the name of the solution column
+
+#' @export
+bind_solution <- function(tidy_lp_solution,
+                          filter_nonzero = FALSE,
+                          name = ".solution") {
+  tidy_lp_solution$tlp$data[name] <- tidy_lp_solution$sol$solution
+  if (filter_nonzero) {
+    tidy_lp_solution$tlp$data <- dplyr::filter(tidy_lp_solution$tlp$data, tidy_lp_solution$sol$solution > 0)
+  }
+  tidy_lp_solution$tlp$data
+}
+
+
+# Data ----------------------------------------------------------------------------------------
+
+#' Fantasy Points
+#'
+#' A modified and stripped down version of a fantasy basketball dataset originating from Fanduel.
+#'
+#' @format ## `fantasy_points`
+#' A data frame with 322 rows and 6 columns.
+#'
+#' \describe{
+#'   \item{Id}{A unique identifier for the player}
+#'   \item{Position}{The player's position}
+#'   \item{Name}{The player's name}
+#'   \item{Projected_FP}{The player's projected fantasy points}
+#'   \item{Salary}{The player's salary}
+#'   \item{Team}{The player's NBA team}
+#' }
+"fantasy_points"
+
+

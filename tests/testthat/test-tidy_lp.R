@@ -10,24 +10,33 @@ test_that("tidy_lp", {
     obj = c(1, 9, 1),
     const_1 = c(1, 2, 3),
     const_2 = c(3, 2, 2),
-    labels = c('x1', 'x2', 'x3')
+    labels = c("x1", "x2", "x3")
   )
-  lp <- tidy_lp(df,
-          obj,
-          const_lhs = c(const_1, const_2),
-          const_rhs = c(9, 15),
-          direction = 'max', obj_labels = labels)
+  lp <- tidy_lp(
+    df,
+    obj,
+    const_1 ~ leq(9),
+    const_2 ~ leq(15)
+  )
   solution <- lp_solve(lp)
-  expect_equal(solution$objval, 40.5)
+  expect_equal(solution$sol$objval, 40.5)
+
+  lp <- tidy_lp(
+    df,
+    obj,
+    const_1 ~ 9,
+    const_2 ~ 15
+  )
+  solution <- lp_solve(lp)
+  expect_equal(solution$sol$objval, 40.5)
 })
 
-test_that("compute_const_dir", {
-  expect_equal(compute_const_dir("<=", "max", 5), rep("<=", 5))
-  expect_equal(compute_const_dir(">=", "max", 5), rep(">=", 5))
-  expect_equal(compute_const_dir(NULL, "max", 5), rep("<=", 5))
-  expect_equal(compute_const_dir(NULL, "min", 5), rep(">=", 5))
-  expect_equal(compute_const_dir(c("<=", ">="), "min", 2), c("<=", ">="))
+
+test_that("read_constraint_rhs", {
+  expect_equal(read_constraint_rhs(f ~ 3, 'max'), constraint_rhs(3, '<='))
+  expect_equal(read_constraint_rhs(f ~ 3, 'min'), constraint_rhs(3, '>='))
+  expect_equal(read_constraint_rhs(f ~ leq(3), 'min'), constraint_rhs(3, '<='))
+  expect_equal(read_constraint_rhs(f ~ geq(3), 'min'), constraint_rhs(3, '>='))
+  expect_equal(read_constraint_rhs(f ~ eq(3), 'min'), constraint_rhs(3, '=='))
 }
 )
-
-
