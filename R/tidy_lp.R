@@ -76,8 +76,8 @@ build_objective_coefficients <- function(tlp) {
 materialize_constraint <- function(constraint, tlp) {
   lhs <- as.matrix(dplyr::transmute(tlp$data, !!constraint$lhs))
   n <- ncol(lhs)
-  dir <- rep(constraint$rhs$direction, n)
-  rhs <- rep(constraint$rhs$value, n)
+  dir <- rep(constraint$direction, n)
+  rhs <- rep(constraint$rhs, n)
   list(lhs = lhs, dir = dir, rhs = rhs)
 }
 
@@ -106,7 +106,7 @@ build_constraint_rhs <- function(tlp) {
 # Constraints ---------------------------------------------------------------------------------
 
 constraint <- function(lhs, rhs) {
-  list(lhs = lhs, rhs = rhs)
+  list(lhs = lhs, direction = rhs$direction, rhs = rhs$value)
 }
 
 constraint_rhs <- function(value, direction) {
