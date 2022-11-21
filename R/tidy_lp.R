@@ -12,6 +12,20 @@ TidyLP <- function(data, objective, constraints, direction,
   )
 }
 
+#' A pretty representation of a tidy LP problem
+#'
+#' @param x a tidy LP problem
+#'
+#' @return as string
+#' @export
+#'
+pretty_tlp <- function(x) {
+  obj <- paste(x$direction, rlang::quo_name(x$objective))
+  consts <- paste('  ', sapply(x$constraints, pretty_constraint),
+                  collapse = '\n')
+  paste(obj, "subject to:", consts, sep = '\n')
+}
+
 #' Create a TidyLP object
 #'
 #' @param .data a data.frame that will be used to construct the object
@@ -176,6 +190,17 @@ read_constraint_rhs <- function(fml, direction) {
 
 infer_constraint_direction <- function(direction) {
   switch(direction, "max" = "<=", "min" = ">=")
+}
+
+#' String representation of a constraint
+#'
+#' @param x a constraint
+#'
+#' @return a string
+#' @export
+#'
+pretty_constraint <- function(x) {
+  paste(rlang::quo_name(x$lhs), x$direction, x$rhs)
 }
 
 
