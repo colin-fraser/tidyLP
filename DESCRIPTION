@@ -1,6 +1,6 @@
 Package: tidyLP
 Title: Tidy Linear Programs
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: 
     person("Colin", "Fraser", , "colin.r.fraser@gmail.com", role = c("aut", "cre"))
 Description: A tidy interface for linear programming.
