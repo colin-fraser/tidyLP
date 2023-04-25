@@ -174,11 +174,13 @@ leq <- function(value) {
 }
 
 #' @rdname leq
+#' @export
 geq <- function(value) {
   constraint_rhs(value, ">=")
 }
 
 #' @rdname leq
+#' @export
 eq <- function(value) {
   constraint_rhs(value, "==")
 }

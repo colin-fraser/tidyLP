@@ -3,6 +3,8 @@
 export(add_constraints)
 export(bind_solution)
 export(categorical_constraint)
+export(eq)
+export(geq)
 export(leq)
 export(lp_solve)
 export(pretty_constraint)
