@@ -258,7 +258,7 @@ categorical_constraint <- function(col) {
   ) |>
     mutate(.n = dplyr::row_number()) |>
     tidyr::spread(.data$.x1, .data$.x2, fill = 0) |>
-    select(-.data$.n)
+    select(-".n")
 }
 
 
