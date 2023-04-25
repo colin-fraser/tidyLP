@@ -1,5 +1,5 @@
 TidyLP <- function(data, objective, constraints, direction,
-                   all_int = FALSE, all_bin = FALSE) {
+                   all_int = FALSE, all_bin = FALSE, calling_frame) {
   structure(
     list(
       data = data, objective = rlang::enquo(objective),
@@ -8,6 +8,7 @@ TidyLP <- function(data, objective, constraints, direction,
       all_int = all_int,
       all_bin = all_bin
     ),
+    calling_frame = calling_frame,
     class = "TidyLP"
   )
 }
@@ -21,9 +22,10 @@ TidyLP <- function(data, objective, constraints, direction,
 #'
 pretty_tlp <- function(x) {
   obj <- paste(x$direction, rlang::quo_name(x$objective))
-  consts <- paste('  ', sapply(x$constraints, pretty_constraint),
-                  collapse = '\n')
-  paste(obj, "subject to:", consts, sep = '\n')
+  consts <- paste("  ", sapply(x$constraints, pretty_constraint),
+    collapse = "\n"
+  )
+  paste(obj, "subject to:", consts, sep = "\n")
 }
 
 #' Create a TidyLP object
@@ -41,8 +43,9 @@ pretty_tlp <- function(x) {
 tidy_lp <- function(.data, .objective, ..., .direction = "max",
                     .all_int = FALSE, .all_bin = FALSE) {
   TidyLP(.data, {{ .objective }},
-    constraints_from_formulas(list(...), direction = .direction),
-    direction = .direction, all_int = .all_int, all_bin = .all_bin
+    constraints_from_formulas(list(...), direction = .direction, env = parent.frame(n = 1)),
+    direction = .direction, all_int = .all_int, all_bin = .all_bin,
+    calling_frame = parent.frame()
   )
 }
 
@@ -98,7 +101,7 @@ materialize_constraint <- function(constraint, tlp) {
 materialize_constraints <- function(tlp) {
   materialized_constraints <- purrr::map(tlp$constraints, materialize_constraint, tlp = tlp)
   list(
-    lhs = do.call(cbind, (purrr::map(materialized_constraints, "lhs"))),
+    lhs = do.call(cbind, purrr::map(materialized_constraints, "lhs")),
     dir = do.call(c, purrr::map(materialized_constraints, "dir")),
     rhs = do.call(c, purrr::map(materialized_constraints, "rhs"))
   )
@@ -162,26 +165,31 @@ all_variables <- function() {
   1
 }
 
-constraints_from_formulas <- function(const_list, direction) {
+constraints_from_formulas <- function(const_list, direction, env) {
+  constraint_from_formula <- function(fml, direction) {
+    lhs <- read_constraint_lhs(fml)
+    rhs <- read_constraint_rhs(fml, direction, env)
+    constraint(lhs, rhs)
+  }
   purrr::map(const_list, constraint_from_formula, direction = direction)
 }
 
-constraint_from_formula <- function(fml, direction) {
-  lhs <- read_constraint_lhs(fml)
-  rhs <- read_constraint_rhs(fml, direction)
-  constraint(lhs, rhs)
-}
+
 
 read_constraint_lhs <- function(fml) {
   fml[[2]]
 }
 
-read_constraint_rhs <- function(fml, direction) {
+read_constraint_rhs <- function(fml, direction, env = parent.frame()) {
   x <- fml[[3]]
   if (is.call(x)) {
-    out <- eval(x)
-  } else if (is.numeric(x)) {
-    out <- constraint_rhs(x, infer_constraint_direction(direction))
+    if (any(x[[1]] == quote(geq), x[[1]] == quote(leq), x[[1]] == quote(eq))) {
+      out <- eval(x, env) # evaluate in the calling frame
+    } else {
+    stop("RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
+    }
+  } else if (is.numeric(eval(x, env))) {
+    out <- constraint_rhs(eval(x, env), infer_constraint_direction(direction))
   } else {
     stop("RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
   }
@@ -189,7 +197,10 @@ read_constraint_rhs <- function(fml, direction) {
 }
 
 infer_constraint_direction <- function(direction) {
-  switch(direction, "max" = "<=", "min" = ">=")
+  switch(direction,
+    "max" = "<=",
+    "min" = ">="
+  )
 }
 
 #' String representation of a constraint
@@ -222,7 +233,7 @@ categorical_constraint <- function(col) {
   ) |>
     mutate(.n = dplyr::row_number()) |>
     tidyr::spread(.data$.x1, .data$.x2, fill = 0) |>
-    select(- .data$.n)
+    select(-.data$.n)
 }
 
 
@@ -230,7 +241,7 @@ categorical_constraint <- function(col) {
 
 # TidyLPSolution ------------------------------------------------------------------------------
 TidyLPSolution <- function(sol, tlp) {
-  structure(list(sol = sol, tlp = tlp), class = 'TidyLPSolution')
+  structure(list(sol = sol, tlp = tlp), class = "TidyLPSolution")
 }
 
 
@@ -272,5 +283,3 @@ bind_solution <- function(tidy_lp_solution,
 #'   \item{Team}{The player's NBA team}
 #' }
 "fantasy_points"
-
-
