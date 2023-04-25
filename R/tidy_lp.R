@@ -103,7 +103,7 @@ lp_solve <- function(tlp, ..., solver = "lpSolve") {
 #'
 #' @export
 add_constraints <- function(tlp, ...) {
-  new_constraints <- constraints_from_formulas(list(...), tlp$direction)
+  new_constraints <- constraints_from_formulas(list(...), tlp$direction, parent.frame())
   tlp$constraints <- c(tlp$constraints, new_constraints)
   tlp
 }
