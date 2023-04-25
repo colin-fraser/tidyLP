@@ -17,6 +17,7 @@ library(dplyr)
 # tidyLP
 
 <!-- badges: start -->
+[![check-standard](https://github.com/colin-fraser/tidyLP/actions/workflows/check-standard.yaml/badge.svg)](https://github.com/colin-fraser/tidyLP/actions/workflows/check-standard.yaml)
 <!-- badges: end -->
 
 `{tidyLP}` provides what I think is a handy and intuitive interface between data.frames and linear programs. 

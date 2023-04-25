@@ -4,6 +4,8 @@
 # tidyLP
 
 <!-- badges: start -->
+
+[![check-standard](https://github.com/colin-fraser/tidyLP/actions/workflows/check-standard.yaml/badge.svg)](https://github.com/colin-fraser/tidyLP/actions/workflows/check-standard.yaml)
 <!-- badges: end -->
 
 `{tidyLP}` provides what I think is a handy and intuitive interface
@@ -25,9 +27,9 @@ I’ll start with a classic: tables and chairs (modified from [these
 slides](http://www.cs.cmu.edu/afs/cs/academic/class/15780-s16/www/slides/linear_prog.pdf)
 by Zico Kolter at CMU). A furniture company makes tables and chairs.
 They are made of wood and metal. A table is made of 1 unit of metal and
-3 units of wood, and when you sell a table you make a profit of $200. A
+3 units of wood, and when you sell a table you make a profit of \$200. A
 chair is made of 2 units of metal and 1 unit of wood, and makes a profit
-of $100. We have 6,000 units of metal and 9,000 units of wood in
+of \$100. We have 6,000 units of metal and 9,000 units of wood in
 inventory. How many tables and chairs should we make?
 
 ### tl;dr, the solution looks like this:
@@ -102,9 +104,9 @@ With the data frame formatted correctly, I find that it’s quite natural
 to formulate the problem with this interface. We want to do the
 following
 
--   Max profit
--   Use less than or equal to 6,000 metal units
--   Use less than or equal to 9,000 wood units
+- Max profit
+- Use less than or equal to 6,000 metal units
+- Use less than or equal to 9,000 wood units
 
 Using `tidy_lp`:
 
