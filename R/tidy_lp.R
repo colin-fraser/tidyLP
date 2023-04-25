@@ -1,5 +1,5 @@
 TidyLP <- function(data, objective, constraints, direction,
-                   all_int = FALSE, all_bin = FALSE, calling_frame) {
+                   all_int = FALSE, all_bin = FALSE) {
   structure(
     list(
       data = data, objective = rlang::enquo(objective),
@@ -8,7 +8,6 @@ TidyLP <- function(data, objective, constraints, direction,
       all_int = all_int,
       all_bin = all_bin
     ),
-    calling_frame = calling_frame,
     class = "TidyLP"
   )
 }
@@ -44,8 +43,7 @@ tidy_lp <- function(.data, .objective, ..., .direction = "max",
                     .all_int = FALSE, .all_bin = FALSE) {
   TidyLP(.data, {{ .objective }},
     constraints_from_formulas(list(...), direction = .direction, env = parent.frame(n = 1)),
-    direction = .direction, all_int = .all_int, all_bin = .all_bin,
-    calling_frame = parent.frame()
+    direction = .direction, all_int = .all_int, all_bin = .all_bin
   )
 }
 
