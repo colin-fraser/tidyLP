@@ -67,7 +67,7 @@ test_that("read_constraint_rhs", {
   expect_equal(read_constraint_rhs(f ~ leq(3), "min"), constraint_rhs(3, "<="))
   expect_equal(read_constraint_rhs(f ~ geq(3), "min"), constraint_rhs(3, ">="))
   expect_equal(read_constraint_rhs(f ~ eq(3), "min"), constraint_rhs(3, "=="))
-  expect_error(read_constraint_rhs(f ~ sum(3), 'max'), regexp = "RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
+  expect_error(read_constraint_rhs(f ~ sum(3), "max"), regexp = "RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
 })
 
 test_that("tidy_lp raises error for NA values", {

@@ -211,7 +211,7 @@ read_constraint_rhs <- function(fml, direction, env = parent.frame()) {
     if (any(x[[1]] == quote(geq), x[[1]] == quote(leq), x[[1]] == quote(eq))) {
       out <- eval(x, env) # evaluate in the calling frame
     } else {
-    stop("RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
+      stop("RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
     }
   } else if (is.numeric(eval(x, env))) {
     out <- constraint_rhs(eval(x, env), infer_constraint_direction(direction))
