@@ -12,6 +12,30 @@ TidyLP <- function(data, objective, constraints, direction,
   )
 }
 
+check_data <- function(data) {
+  if (!is.data.frame(data)) {
+    stop("Input must be a dataframe")
+  }
+
+  for (col_name in colnames(data)) {
+    column <- data[[col_name]]
+
+    if (any(is.na(column))) {
+      stop(paste("Column", col_name, "contains NA values"))
+    }
+
+    if (any(is.null(column))) {
+      stop(paste("Column", col_name, "contains NULL values"))
+    }
+
+    if (any(is.infinite(column))) {
+      stop(paste("Column", col_name, "contains infinite values"))
+    }
+  }
+
+  TRUE
+}
+
 #' A pretty representation of a tidy LP problem
 #'
 #' @param x a tidy LP problem
@@ -41,6 +65,7 @@ pretty_tlp <- function(x) {
 #'
 tidy_lp <- function(.data, .objective, ..., .direction = "max",
                     .all_int = FALSE, .all_bin = FALSE) {
+  check_data(.data)
   TidyLP(.data, {{ .objective }},
     constraints_from_formulas(list(...), direction = .direction, env = parent.frame(n = 1)),
     direction = .direction, all_int = .all_int, all_bin = .all_bin

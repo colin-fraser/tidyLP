@@ -69,3 +69,23 @@ test_that("read_constraint_rhs", {
   expect_equal(read_constraint_rhs(f ~ eq(3), "min"), constraint_rhs(3, "=="))
   expect_error(read_constraint_rhs(f ~ sum(3), 'max'), regexp = "RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
 })
+
+test_that("tidy_lp raises error for NA values", {
+  test_data <- data.frame(a = c(1, 2, NA), b = c(4, 5, 6))
+  expect_error(tidy_lp(test_data, a < 1), "Column a contains NA values")
+})
+
+test_that("tidy_lp raises error for infinite values", {
+  test_data <- data.frame(a = c(1, 2, Inf), b = c(4, 5, 6))
+  expect_error(tidy_lp(test_data, a < 1), "Column a contains infinite values")
+})
+
+test_that("tidy_lp raises error for infinite values", {
+  test_data <- data.frame(a = c(1, 2, -Inf), b = c(4, 5, 6))
+  expect_error(tidy_lp(test_data, a < 1), "Column a contains infinite values")
+})
+
+test_that("tidy_lp works with clean data", {
+  test_data <- data.frame(a = c(1, 2, 3), b = c(4, 5, 6))
+  expect_silent(tidy_lp(test_data, a < 1))
+})
