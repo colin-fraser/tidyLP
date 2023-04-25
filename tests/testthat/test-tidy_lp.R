@@ -12,6 +12,8 @@ test_that("tidy_lp", {
     const_2 = c(3, 2, 2),
     labels = c("x1", "x2", "x3")
   )
+
+  # check that constraints work for calls to const rhs functions
   lp <- tidy_lp(
     df,
     obj,
@@ -21,6 +23,7 @@ test_that("tidy_lp", {
   solution <- lp_solve(lp)
   expect_equal(solution$sol$objval, 40.5)
 
+  # check that constraints work for constant rhs calls
   lp <- tidy_lp(
     df,
     obj,
@@ -29,14 +32,60 @@ test_that("tidy_lp", {
   )
   solution <- lp_solve(lp)
   expect_equal(solution$sol$objval, 40.5)
+
+  # check that constraints rhs functions work in function calls with variables in the rhs
+  solver <- function(rhs1, rhs2) {
+    lp <- tidy_lp(
+      df,
+      obj,
+      const_1 ~ leq(rhs1),
+      const_2 ~ leq(rhs2)
+    )
+
+    lp_solve(lp)
+  }
+  expect_equal(solver(9, 15)$sol$objval, 40.5)
+
+  # check that constraints rhs functions work in function calls with variables in the rhs
+  solver <- function(rhs1, rhs2) {
+    lp <- tidy_lp(
+      df,
+      obj,
+      const_1 ~ rhs1,
+      const_2 ~ rhs2
+    )
+
+    lp_solve(lp)
+  }
+  expect_equal(solver(9, 15)$sol$objval, 40.5)
 })
 
 
 test_that("read_constraint_rhs", {
-  expect_equal(read_constraint_rhs(f ~ 3, 'max'), constraint_rhs(3, '<='))
-  expect_equal(read_constraint_rhs(f ~ 3, 'min'), constraint_rhs(3, '>='))
-  expect_equal(read_constraint_rhs(f ~ leq(3), 'min'), constraint_rhs(3, '<='))
-  expect_equal(read_constraint_rhs(f ~ geq(3), 'min'), constraint_rhs(3, '>='))
-  expect_equal(read_constraint_rhs(f ~ eq(3), 'min'), constraint_rhs(3, '=='))
-}
-)
+  expect_equal(read_constraint_rhs(f ~ 3, "max"), constraint_rhs(3, "<="))
+  expect_equal(read_constraint_rhs(f ~ 3, "min"), constraint_rhs(3, ">="))
+  expect_equal(read_constraint_rhs(f ~ leq(3), "min"), constraint_rhs(3, "<="))
+  expect_equal(read_constraint_rhs(f ~ geq(3), "min"), constraint_rhs(3, ">="))
+  expect_equal(read_constraint_rhs(f ~ eq(3), "min"), constraint_rhs(3, "=="))
+  expect_error(read_constraint_rhs(f ~ sum(3), 'max'), regexp = "RHS of constraint formula must be either a call to geq, leq, eq; or numeric")
+})
+
+test_that("tidy_lp raises error for NA values", {
+  test_data <- data.frame(a = c(1, 2, NA), b = c(4, 5, 6))
+  expect_error(tidy_lp(test_data, a < 1), "Column a contains NA values")
+})
+
+test_that("tidy_lp raises error for infinite values", {
+  test_data <- data.frame(a = c(1, 2, Inf), b = c(4, 5, 6))
+  expect_error(tidy_lp(test_data, a < 1), "Column a contains infinite values")
+})
+
+test_that("tidy_lp raises error for infinite values", {
+  test_data <- data.frame(a = c(1, 2, -Inf), b = c(4, 5, 6))
+  expect_error(tidy_lp(test_data, a < 1), "Column a contains infinite values")
+})
+
+test_that("tidy_lp works with clean data", {
+  test_data <- data.frame(a = c(1, 2, 3), b = c(4, 5, 6))
+  expect_silent(tidy_lp(test_data, a < 1))
+})
